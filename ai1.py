@@ -39,37 +39,64 @@ class CIFAR10Predictor:
             confidence, class_idx = torch.max(probabilities, 0)
         return CIFAR_CLASSES[class_idx.item()], confidence.item()
 
+
 if __name__ == "__main__":
-    # Default values inside the Colab structure
-    default_weights = "/content/edge_cnn_bench/outputs/mobilenetv2_transfer_best.pth"
-    default_predict_folder = "/content/predict_images"
+    # Cross-platform paths relative to this script
+    BASE_DIR = Path(__file__).resolve().parent
+
+    default_weights = BASE_DIR / "transferbest.pth"
+    default_predict_folder = BASE_DIR / "predict_images"
 
     if len(sys.argv) == 1:
-        print("No arguments provided. Running with Colab default paths...")
-        if not os.path.exists(default_weights):
-            print(f"Error: Default weights not found at {default_weights}")
+        print("Thesis AI - Image Predictor")
+        print("Checking model weights...")
+
+        if not default_weights.exists():
+            print(f"ERROR: Model weights not found: {default_weights}")
             sys.exit(1)
-            
-        predictor = CIFAR10Predictor(default_weights)
-        
-        # Search for any image inside predict_images folder
-        img_dir = Path(default_predict_folder)
+
+        print(f"Loading model: {default_weights}")
+
+        predictor = CIFAR10Predictor(str(default_weights))
+
+        default_predict_folder.mkdir(exist_ok=True)
+
         supported = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
-        images = [p for p in img_dir.iterdir() if p.suffix.lower() in supported] if img_dir.exists() else []
-        
+
+        images = [
+            p for p in default_predict_folder.iterdir()
+            if p.suffix.lower() in supported
+        ]
+
         if not images:
-            print(f"No images found in {default_predict_folder} to predict.")
+            print(f"No images found in {default_predict_folder}")
+            print("Place JPG or PNG images inside predict_images.")
         else:
+            print(f"Found {len(images)} images.")
+            print()
+
             for img_path in images:
                 label, conf = predictor.predict(img_path)
-                print(f"File: {img_path.name} -> Prediction: {label} ({conf*100:.2f}% confidence)")
+                print(
+                    f"File: {img_path.name} -> "
+                    f"Prediction: {label} "
+                    f"({conf*100:.2f}% confidence)"
+                )
+
     elif len(sys.argv) == 3:
-        weights = sys.argv[1]
-        image = sys.argv[2]
-        predictor = CIFAR10Predictor(weights)
-        label, conf = predictor.predict(image)
-        print(f"File: {os.path.basename(image)} -> Prediction: {label} ({conf*100:.2f}% confidence)")
+        weights = Path(sys.argv[1])
+        image = Path(sys.argv[2])
+
+        predictor = CIFAR10Predictor(str(weights))
+        label, conf = predictor.predict(str(image))
+
+        print(
+            f"File: {image.name} -> "
+            f"Prediction: {label} "
+            f"({conf*100:.2f}% confidence)"
+        )
+
     else:
         print("Usage:")
-        print("  python predictor.py                                      (runs on default folders)")
-        print("  python predictor.py <path_to_weights.pth> <image_path>   (runs on specific image)")
+        print("  python ai1.py")
+        print("  python ai1.py <weights.pth> <image_path>")
