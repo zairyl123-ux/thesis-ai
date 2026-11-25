@@ -66,10 +66,11 @@ class CIFAR10Predictor:
 
         self.model = build_mobilenet_v2()
 
-        checkpoint = torch.load(
-            weights_path,
-            map_location=self.device
-        )
+       checkpoint = torch.load(
+    weights_path,
+    map_location=self.device,
+    weights_only=False
+)
 
         if "model_state_dict" not in checkpoint:
             raise KeyError(
