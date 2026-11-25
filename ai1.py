@@ -66,11 +66,12 @@ class CIFAR10Predictor:
 
         self.model = build_mobilenet_v2()
 
-       checkpoint = torch.load(
-    weights_path,
-    map_location=self.device,
-    weights_only=False
-)
+        # Load checkpoint (PyTorch 2.6+ compatibility)
+        checkpoint = torch.load(
+            weights_path,
+            map_location=self.device,
+            weights_only=False
+        )
 
         if "model_state_dict" not in checkpoint:
             raise KeyError(
@@ -147,7 +148,6 @@ def process_image(predictor, image_path):
 def process_folder(predictor, folder):
 
     folder = Path(folder).expanduser().resolve()
-
     folder.mkdir(parents=True, exist_ok=True)
 
     supported = {
