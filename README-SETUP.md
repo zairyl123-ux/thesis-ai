@@ -1,46 +1,53 @@
-# Thesis AI — cross-platform setup
+# Thesis AI — Setup Guide
 
-This kit adds separate setup paths for Windows, Linux, and Google Colab while keeping one project repository.
+## Windows
 
-## Repository files expected
+1. Install Python 3.10 or newer.
+2. Run \`install.bat\`.
+3. Choose Install / Update.
+4. After setup, choose Launch.
 
-The public GitHub repository must contain these files at its root:
+The predictor starts in interactive mode when launched from a terminal.
 
-- `ai1.py`
-- `transferbest.pth`
-- `requirements.txt`
+### Drag-and-drop prediction
 
-The installer scripts in this kit download those exact paths from the `main` branch.
+When you see:
 
-## Windows CMD / PowerShell
+\`\`\`text
+Image path >
+\`\`\`
 
-Download `install.bat` and run it:
+Drag an image from File Explorer into the terminal and press Enter. The predicted CIFAR-10 class and confidence will be printed. The program then waits for another image.
 
-```powershell
-curl.exe -L https://raw.githubusercontent.com/zairyl123-ux/thesis-ai/main/install.bat -o install.bat
-.\install.bat
-```
+Commands:
+- \`folder\` — enter a directory and classify its images.
+- \`help\` — show instructions.
+- \`q\` — exit.
 
-The batch installer creates `thesis-ai\\.venv`, prompts before installing missing dependencies, offers CPU or CUDA 12.8 PyTorch, downloads the project files, and optionally launches the script.
+You can also paste a complete path. JPG, JPEG, PNG, BMP, and WEBP are supported.
 
 ## Linux
 
-Put `install.sh` in the repository root, commit it, then run:
+Run:
 
-```bash
+\`\`\`bash
 chmod +x install.sh
 ./install.sh
-```
+\`\`\`
+
+Then choose Launch. Drag-and-drop works in terminal emulators that paste dropped file paths into the prompt.
 
 ## Google Colab
 
-Open `colab_setup.ipynb` in Colab, select a GPU runtime if desired, and run the setup cell. Colab generally provides PyTorch already, so the notebook preserves its existing Torch installation and installs only `requirements.txt`.
+Open \`colab_setup.ipynb\` and run its cells. For batch inference, place images in \`predict_images/\` and run the prediction cell. The interactive terminal prompt is intended for local terminals.
 
-## Important notes
+## Model checkpoint
 
-- `requirements.txt` deliberately excludes `torch` and `torchvision`; those are installed separately on local machines to let users choose CPU or CUDA.
-- CUDA 12.8 is a selectable example build, not a guarantee that every NVIDIA GPU is supported. Check the current official PyTorch selector for the correct build: https://pytorch.org/get-started/locally/
-- A GPU being detected by `nvidia-smi` does not guarantee that the installed PyTorch build supports its architecture.
-- The K620 is an older GPU; use CPU mode unless you have independently confirmed a compatible PyTorch/CUDA setup.
-- Do not commit API keys, passwords, virtual environments, or unrelated large datasets.
-- Before publishing, confirm that `ai1.py` expects the checkpoint filename `transferbest.pth` and that both files really exist at the repository root.
+The predictor expects \`transferbest.pth\` and a checkpoint containing \`model_state_dict\`. Do not rename or replace the checkpoint unless you have another compatible trained model.
+
+## Troubleshooting
+
+- **Checkpoint not found:** place \`transferbest.pth\` beside \`ai1.py\`.
+- **Unsupported image:** use JPG, JPEG, PNG, BMP, or WEBP.
+- **Path not found:** make sure the dropped path points to an existing file.
+- **CUDA unavailable:** CPU inference is used automatically.
