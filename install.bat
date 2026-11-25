@@ -11,54 +11,44 @@ color 0B
 set "REPO=https://raw.githubusercontent.com/zairyl123-ux/thesis-ai/main"
 set "PROJECT=thesis-ai"
 set "ROOT=%~dp0%PROJECT%"
-set "CUDA_URL=https://download.pytorch.org/whl/cu128"
+
 set "CPU_URL=https://download.pytorch.org/whl/cpu"
+set "CUDA_URL=https://download.pytorch.org/whl/cu128"
 
 echo.
 echo ==========================================
 echo          THESIS AI INSTALLER
 echo ==========================================
-echo          Cross-platform project
-echo ==========================================
 echo.
 
 :: ==========================================
-:: 1. SYSTEM REQUIREMENTS
+:: PYTHON CHECK
 :: ==========================================
 
-echo [1/7] Checking system requirements...
-echo.
+echo [1/6] Checking Python...
 
 where python >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Python was not found.
-    echo.
-    echo Please install Python 3.10 or newer:
+    echo ERROR: Python not found.
+    echo Download Python 3.10 or newer:
     echo https://www.python.org/downloads/
+    goto fail
+)
+
+python -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)"
+if errorlevel 1 (
+    echo ERROR: Python 3.10+ required.
     goto fail
 )
 
 python --version
 
-python -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)"
-if errorlevel 1 (
-    echo ERROR: Python 3.10 or newer is required.
-    goto fail
-)
-
-python -m pip --version
-if errorlevel 1 (
-    echo ERROR: pip is unavailable.
-    goto fail
-)
-
 :: ==========================================
-:: 2. PROJECT ENVIRONMENT
+:: PROJECT DIRECTORY
 :: ==========================================
 
 echo.
-echo [2/7] Preparing project environment...
-echo.
+echo [2/6] Preparing environment...
 
 if not exist "%ROOT%" mkdir "%ROOT%"
 if errorlevel 1 goto fail
@@ -67,174 +57,117 @@ cd /d "%ROOT%"
 if errorlevel 1 goto fail
 
 if not exist ".venv\Scripts\python.exe" (
-    echo Creating virtual environment...
     python -m venv .venv
     if errorlevel 1 goto fail
-) else (
-    echo Existing virtual environment found.
 )
 
 set "PY=%CD%\.venv\Scripts\python.exe"
 
-:: ==========================================
-:: 3. DOWNLOAD REQUIREMENTS
-:: ==========================================
-
-echo.
-echo [3/7] Retrieving dependency list...
-echo.
-
-curl.exe -fL --retry 3 --connect-timeout 15 "%REPO%/requirements.txt" -o requirements.tmp
-if errorlevel 1 goto download_fail
-
-move /y requirements.tmp requirements.txt >nul
+"%PY%" -m pip install --upgrade pip
 if errorlevel 1 goto fail
 
 :: ==========================================
-:: 4. DEPENDENCY CHECK
+:: DEPENDENCY CHECK
 :: ==========================================
 
 echo.
-echo [4/7] Checking Python dependencies...
-echo.
+echo [3/6] Checking dependencies...
 
-"%PY%" -c "import importlib.util; mods=['numpy','pandas','matplotlib','PIL','onnx','onnxscript','torch','torchvision']; missing=[m for m in mods if importlib.util.find_spec(m) is None]; print('Missing packages:', ', '.join(missing) if missing else 'None'); raise SystemExit(1 if missing else 0)"
+"%PY%" -c "import importlib.util as u; m=['numpy','pandas','matplotlib','PIL','onnx','onnxscript','torch','torchvision']; x=[p for p in m if u.find_spec(p) is None]; print('Missing:', ', '.join(x) if x else 'None'); raise SystemExit(bool(x))"
 
-if errorlevel 1 goto dependency_prompt
-
-echo All required packages appear to be installed.
-goto download_files
-
-:dependency_prompt
+if not errorlevel 1 goto download_files
 
 echo.
-echo ==========================================
-echo          DEPENDENCIES MISSING
-echo ==========================================
-echo.
-echo Some required packages are missing.
-echo.
-choice /C YN /M "Would you like to install dependencies"
+echo Some dependencies are missing.
 
-if errorlevel 2 (
-    echo.
-    echo Dependency installation skipped.
-    goto download_files
-)
+choice /C YN /M "Install missing dependencies now"
+if errorlevel 2 goto download_files
 
-:: ==========================================
-:: 5. PYTORCH INSTALLATION
-:: ==========================================
+:: Install regular dependencies
+"%PY%" -m pip install -r "%REPO%/requirements.txt"
+if errorlevel 1 goto fail
+
+:: Check PyTorch separately
+"%PY%" -c "import importlib.util as u; raise SystemExit(0 if u.find_spec('torch') and u.find_spec('torchvision') else 1)"
+
+if not errorlevel 1 goto download_files
 
 echo.
-echo ==========================================
-echo          PYTORCH CONFIGURATION
-echo ==========================================
+echo Select PyTorch installation:
 echo.
-echo [1] CPU-only installation
-echo [2] NVIDIA CUDA 12.8 installation
-echo.
-echo Note: CUDA requires a compatible NVIDIA GPU,
-echo driver, and supported GPU architecture.
+echo [1] CPU only
+echo [2] NVIDIA CUDA 12.8
 echo.
 
-choice /C 12 /M "Select installation type"
-set "GPU_CHOICE=%ERRORLEVEL%"
+choice /C 12 /M "Choose installation"
 
-echo.
-echo Updating pip...
-
-"%PY%" -m pip install --upgrade pip
-if errorlevel 1 goto install_fail
-
-if "%GPU_CHOICE%"=="2" (
-    echo.
-    echo Installing NVIDIA CUDA PyTorch...
+if "%ERRORLEVEL%"=="2" (
     "%PY%" -m pip install torch torchvision --index-url %CUDA_URL%
 ) else (
-    echo.
-    echo Installing CPU-only PyTorch...
     "%PY%" -m pip install torch torchvision --index-url %CPU_URL%
 )
 
-if errorlevel 1 goto install_fail
-
-:: Install remaining dependencies
-echo.
-echo Installing remaining project dependencies...
-
-"%PY%" -m pip install -r requirements.txt
-if errorlevel 1 goto install_fail
+if errorlevel 1 goto fail
 
 :: ==========================================
-:: 6. DOWNLOAD PROJECT FILES
+:: DOWNLOAD PROJECT
 :: ==========================================
 
 :download_files
 
 echo.
-echo ==========================================
-echo          DOWNLOADING PROJECT
-echo ==========================================
-echo.
+echo [4/6] Downloading project files...
 
-echo Downloading ai1.py...
-
-curl.exe -fL --retry 3 --connect-timeout 15 "%REPO%/ai1.py" -o ai1.py.tmp
+curl.exe -fL --retry 3 "%REPO%/ai1.py" -o ai1.py.tmp
 if errorlevel 1 goto download_fail
 
 move /y ai1.py.tmp ai1.py >nul
-if errorlevel 1 goto fail
 
-echo.
-echo Downloading trained model...
-
-curl.exe -fL --retry 3 --connect-timeout 15 "%REPO%/transferbest.pth" -o transferbest.pth.tmp
+curl.exe -fL --retry 3 "%REPO%/transferbest.pth" -o transferbest.pth.tmp
 if errorlevel 1 goto download_fail
 
 move /y transferbest.pth.tmp transferbest.pth >nul
+
+curl.exe -fL --retry 3 "%REPO%/requirements.txt" -o requirements.tmp
+if errorlevel 1 goto download_fail
+
+move /y requirements.tmp requirements.txt >nul
+
+if not exist "predict_images" mkdir predict_images
+
+:: ==========================================
+:: VERIFY
+:: ==========================================
+
+echo.
+echo [5/6] Verifying installation...
+
+"%PY%" -c "import torch, torchvision; print('PyTorch:',torch.__version__); print('Torchvision:',torchvision.__version__); print('CUDA:',torch.cuda.is_available()); print('Device:',torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+
 if errorlevel 1 goto fail
 
+if not exist "transferbest.pth" goto fail
+
+echo.
+echo Model checkpoint found.
+echo Installation successful!
+
 :: ==========================================
-:: 7. ENVIRONMENT VERIFICATION
+:: LAUNCH
 :: ==========================================
 
 echo.
-echo ==========================================
-echo          SYSTEM VERIFICATION
-echo ==========================================
+echo [6/6] Installation complete.
 echo.
-
-"%PY%" -c "import torch; print('PyTorch:',torch.__version__); print('CUDA available:',torch.cuda.is_available()); print('Device:',torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
-
-if errorlevel 1 (
-    echo WARNING: PyTorch verification failed.
-)
-
-echo.
-echo ==========================================
-echo          INSTALLATION COMPLETE
-echo ==========================================
-echo.
-echo Project location:
+echo Project directory:
 echo %ROOT%
 echo.
-echo Virtual environment:
-echo %ROOT%\.venv
-echo.
 
-choice /C YN /M "Would you like to launch Thesis AI now"
+choice /C YN /M "Launch Thesis AI now"
 
 if errorlevel 2 goto finish
 
-echo.
-echo Launching Thesis AI...
-echo.
-
 "%PY%" ai1.py
-
-echo.
-echo Application exited.
 
 :finish
 echo.
@@ -243,42 +176,23 @@ pause
 exit /b 0
 
 :: ==========================================
-:: ERROR HANDLING
+:: ERRORS
 :: ==========================================
 
 :download_fail
 echo.
-echo ==========================================
-echo          DOWNLOAD ERROR
-echo ==========================================
-echo.
-echo Failed to download a project file.
-echo Check your internet connection and GitHub repository.
-goto exit_error
-
-:install_fail
-echo.
-echo ==========================================
-echo          INSTALLATION ERROR
-echo ==========================================
-echo.
-echo Dependency installation failed.
-echo Check your Python version, internet connection,
-echo and PyTorch compatibility.
-goto exit_error
+echo ERROR: Download failed.
+echo Check your internet connection and GitHub files.
+goto error_exit
 
 :fail
 echo.
-echo ==========================================
-echo          SETUP ERROR
-echo ==========================================
-echo.
-echo An error occurred during setup.
-goto exit_error
+echo ERROR: Installation failed.
+goto error_exit
 
-:exit_error
-if exist "requirements.tmp" del "requirements.tmp"
-if exist "ai1.py.tmp" del "ai1.py.tmp"
-if exist "transferbest.pth.tmp" del "transferbest.pth.tmp"
+:error_exit
+if exist ai1.py.tmp del ai1.py.tmp
+if exist transferbest.pth.tmp del transferbest.pth.tmp
+if exist requirements.tmp del requirements.tmp
 pause
 exit /b 1
